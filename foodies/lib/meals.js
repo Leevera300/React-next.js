@@ -5,5 +5,7 @@ const db = sql("meals.db");
 export async function getMeals() {
     await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate a delay
   const meals = db.prepare('SELECT * FROM meals').all();
+
+  // throw new Error("Loading meals failed!");
   return meals;
 }
