@@ -1,4 +1,7 @@
 import sql from 'better-sqlite3';
+import slugify from 'slugify';
+import xss from 'xss';
+import fs from 'fs';
 
 const db = sql("meals.db");
 
@@ -8,4 +11,38 @@ export async function getMeals() {
 
   // throw new Error("Loading meals failed!");
   return meals;
+}
+
+export function getMeal(slug) {
+  return db.prepare('SELECT * FROM meals WHERE slug = ?').get(slug);
+}
+
+export async function saveMeal(meal) {
+  meal.slug = slugify(meal.title, { lower: true });
+  meal.instructions = xss(meal.instructions);
+
+  const extension = meal.image.name.split('.').pop();
+  const filename = `${meal.slug}.${extension}`;
+
+  const stream = fs.createWriteStream(`./public/images/${filename}`)
+  const bufferedImage = await meal.image.arrayBuffer();
+
+  stream.write(Buffer.from(bufferedImage), (error) => {
+    if (error) {
+      console.error('Saving image failed!', error);
+    } 
+  });
+
+  meal.image = `/images/${filename}`;
+
+  db.prepare(`INSERT INTO meals (title, summary, instructions, image, slug, creator, creator_email) 
+    VALUES (
+      @title,
+      @summary,
+      @instructions,
+      @image,
+      @slug,
+      @creator,
+      @creator_email)
+  `).run(meal);
 }
